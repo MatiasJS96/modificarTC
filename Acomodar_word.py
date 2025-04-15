@@ -2,7 +2,7 @@ import streamlit as st
 from docx import Document
 from datetime import timedelta
 import re
-import os
+import io
 
 def tc_to_timedelta(tc, fps):
     try:
@@ -73,24 +73,22 @@ if st.button("Procesar"):
             td_nuevo = tc_to_timedelta(tc_nuevo, fps)
             delta = td_nuevo - td_original
 
-            doc = Document(archivo)
+            # Cargar el archivo DOCX desde el uploader de Streamlit
+            doc = Document(io.BytesIO(archivo.read()))
             ajustar_tc(doc, delta, fps)
 
-            base = os.path.splitext(archivo.name)[0]
-            salida = f"{base}_AJUSTADO_desde_{tc_original.replace(':', '-')}_a_{tc_nuevo.replace(':', '-')}_{fps}fps.docx"
+            # Guardar el archivo ajustado en memoria
+            output = io.BytesIO()
+            doc.save(output)
+            output.seek(0)
 
-            # Crear un archivo temporal para la descarga
-            with open(salida, "wb") as f:
-                doc.save(f)
-
-            # Descargar archivo binario con Streamlit
-            with open(salida, "rb") as f:
-                st.download_button(
-                    label="Descargar archivo ajustado",
-                    data=f,
-                    file_name=salida,
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                )
+            # Descargar archivo ajustado
+            st.download_button(
+                label="Descargar archivo ajustado",
+                data=output,
+                file_name=f"{archivo.name}_AJUSTADO.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
 
         except Exception as e:
             st.error(f"Error: {e}")

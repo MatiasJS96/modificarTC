@@ -1,5 +1,4 @@
-import tkinter as tk
-from tkinter import filedialog, messagebox
+import streamlit as st
 from docx import Document
 from datetime import timedelta
 import re
@@ -52,60 +51,45 @@ def ajustar_tc(doc, delta, fps):
                         new_text = new_text.replace(match, updated_tc)
                     para.text = new_text
 
-def seleccionar_archivo():
-    filepath = filedialog.askopenfilename(filetypes=[("Documentos Word", "*.docx")])
-    if filepath:
-        archivo_var.set(filepath)
+# Interfaz en Streamlit
+st.title("Ajustador de Timecodes por TC de Referencia")
 
-def procesar():
-    ruta = archivo_var.get()
-    tc_original = tc_original_var.get()
-    tc_nuevo = tc_nuevo_var.get()
+# Subir archivo
+archivo = st.file_uploader("Seleccioná un archivo DOCX", type="docx")
 
-    try:
-        fps = float(fps_var.get())
-        td_original = tc_to_timedelta(tc_original, fps)
-        td_nuevo = tc_to_timedelta(tc_nuevo, fps)
-        delta = td_nuevo - td_original
-    except ValueError as e:
-        messagebox.showerror("Error en TC", str(e))
-        return
+# Entradas de TC original y nuevo
+tc_original = st.text_input("TC original de referencia (ej. 01:00:00:00):")
+tc_nuevo = st.text_input("Nuevo TC deseado (ej. 01:02:30:10):")
 
-    if not ruta or not os.path.exists(ruta):
-        messagebox.showerror("Error", "Seleccioná un archivo válido.")
-        return
+# FPS
+fps = st.selectbox("Framerate (fps):", ["23.976", "24", "25", "29.97"])
 
-    try:
-        doc = Document(ruta)
-        ajustar_tc(doc, delta, fps)
-        base = os.path.splitext(ruta)[0]
-        salida = f"{base}_AJUSTADO_desde_{tc_original.replace(':', '-')}_a_{tc_nuevo.replace(':', '-')}_{fps}fps.docx"
-        doc.save(salida)
-        messagebox.showinfo("Éxito", f"Archivo guardado como:\n{salida}")
-    except Exception as e:
-        messagebox.showerror("Error", str(e))
+# Procesar archivo
+if st.button("Procesar"):
+    if archivo and tc_original and tc_nuevo:
+        try:
+            fps = float(fps)
+            td_original = tc_to_timedelta(tc_original, fps)
+            td_nuevo = tc_to_timedelta(tc_nuevo, fps)
+            delta = td_nuevo - td_original
 
-# Interfaz
-root = tk.Tk()
-root.title("Ajustador de Timecodes por TC de Referencia")
+            doc = Document(archivo)
+            ajustar_tc(doc, delta, fps)
 
-archivo_var = tk.StringVar()
-tc_original_var = tk.StringVar()
-tc_nuevo_var = tk.StringVar()
-fps_var = tk.StringVar(value="23.976")
+            base = os.path.splitext(archivo.name)[0]
+            salida = f"{base}_AJUSTADO_desde_{tc_original.replace(':', '-')}_a_{tc_nuevo.replace(':', '-')}_{fps}fps.docx"
 
-tk.Label(root, text="Archivo DOCX:").pack(pady=(10,0))
-tk.Entry(root, textvariable=archivo_var, width=60).pack(padx=10)
-tk.Button(root, text="Seleccionar archivo", command=seleccionar_archivo).pack(pady=5)
+            # Guardar el archivo resultante
+            with open(salida, "wb") as f:
+                doc.save(f)
 
-tk.Label(root, text="TC original de referencia (ej. 01:00:00:00):").pack()
-tk.Entry(root, textvariable=tc_original_var).pack()
+            st.success(f"Archivo guardado como: {salida}")
+            st.download_button("Descargar archivo ajustado", salida)
 
-tk.Label(root, text="Nuevo TC deseado (ej. 01:02:30:10):").pack()
-tk.Entry(root, textvariable=tc_nuevo_var).pack()
-
-tk.Label(root, text="Framerate (fps):").pack()
-tk.OptionMenu(root, fps_var, "23.976", "24", "25", "29.97").pack()
+        except Exception as e:
+            st.error(f"Error: {e}")
+    else:
+        st.error("Por favor, completa todos los campos.")
 
 tk.Button(root, text="Procesar", command=procesar).pack(pady=10)
 

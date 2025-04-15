@@ -79,18 +79,20 @@ if st.button("Procesar"):
             base = os.path.splitext(archivo.name)[0]
             salida = f"{base}_AJUSTADO_desde_{tc_original.replace(':', '-')}_a_{tc_nuevo.replace(':', '-')}_{fps}fps.docx"
 
-            # Guardar el archivo resultante
+            # Crear un archivo temporal para la descarga
             with open(salida, "wb") as f:
                 doc.save(f)
 
-            st.success(f"Archivo guardado como: {salida}")
-            st.download_button("Descargar archivo ajustado", salida)
+            # Descargar archivo binario con Streamlit
+            with open(salida, "rb") as f:
+                st.download_button(
+                    label="Descargar archivo ajustado",
+                    data=f,
+                    file_name=salida,
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                )
 
         except Exception as e:
             st.error(f"Error: {e}")
     else:
         st.error("Por favor, completa todos los campos.")
-
-tk.Button(root, text="Procesar", command=procesar).pack(pady=10)
-
-root.mainloop()
